@@ -1,0 +1,6 @@
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+img=mpimg.imread(r'C:\Users\admin\Downloads\IMG-20250508-WA0002.jpg') 
+plt.figure(figsize=(20,40))
+plt.imshow(img)
+plt.show()
