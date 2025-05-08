@@ -1,0 +1,78 @@
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.preprocessing import KBinsDiscretizer, LabelEncoder
+
+def prepare_data():
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+
+    discretizer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform')
+    X_binned = discretizer.fit_transform(X)
+
+    categories = ['Low', 'Medium', 'High']
+    df = pd.DataFrame(X_binned, columns=iris.feature_names)
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: categories[int(x)])
+
+    df['Target'] = ['Yes' if label == 0 else 'No' for label in y]
+    return df
+
+def encode_data(df):
+    X = df.iloc[:, :-1]
+    y = df.iloc[:, -1]
+
+    le_list = []
+    for col in X.columns:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col])
+        le_list.append(le)
+
+    label_encoder = LabelEncoder()
+    y = label_encoder.fit_transform(y)  
+    return X.values, y
+
+def consistent(hypothesis, instance):
+    return all(h == '?' or h == val for h, val in zip(hypothesis, instance))
+
+def generalize_S(S, instance):
+    for i in range(len(S)):
+        if S[i] == '∅':
+            S[i] = instance[i]
+        elif S[i] != instance[i]:
+            S[i] = '?'
+    return S
+
+def specialize_G(G, S, instance):
+    new_G = []
+    for g in G:
+        if consistent(g, instance):
+            for i in range(len(g)):
+                if g[i] == '?':
+                    if S[i] != instance[i]:
+                        new_hypo = g.copy()
+                        new_hypo[i] = S[i]
+                        if new_hypo not in new_G:
+                            new_G.append(new_hypo)
+    return new_G
+
+def candidate_elimination(X, y):
+    S = ['∅'] * X.shape[1]
+    G = [['?'] * X.shape[1]]
+
+    for xi, yi in zip(X, y):
+        if yi == 1:
+            S = generalize_S(S, xi)
+            G = [g for g in G if consistent(g, S)]
+        else:
+            G = specialize_G(G, S, xi)
+    return S, G
+
+df = prepare_data()
+X, y = encode_data(df)
+S_final, G_final = candidate_elimination(X, y)
+
+print("Final Specific Hypothesis (S):", S_final)
+print("Final General Hypotheses (G):")
+for g in G_final:
+    print(g)
